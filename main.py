@@ -1,16 +1,19 @@
 from openai import OpenAI
-import os, sys
+import os
+import sys
+import json
 from dotenv import load_dotenv
 import argparse
 from pathlib import Path
 
-#Constants
+# Constants
 MODEL_NAME = "openai/gpt-oss-20b"
-SYSTEM_PROMPT = "You are a helpful assistant."
+SYSTEM_PROMPT = "analyze the sentiment of the user’s text"
 BASE_URL = "https://api.groq.com/openai/v1"
 
+
 def main():
-    #loading environment variables
+    # loading environment variables
     load_dotenv()
 
     parser = argparse.ArgumentParser(description="Text processing CLI tool")
@@ -54,19 +57,67 @@ def main():
         api_key=api_key
     )
 
-    result = analyze(client,content)
+    result = json.loads(analyze(client, content))
 
-    print(result)
+    print(json.dumps(result, indent=2))
 
 
-def analyze(client,content):
+def analyze(client, content):
 
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": content}
-        ]
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "sentiment_analysis",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "sentiment": {
+                            "type": "string",
+                            "enum": ["positive", "negative", "mixed"]
+                        },
+                        "confidence_score": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        },
+                        "key_phrases": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "phrase": {
+                                        "type": "string"
+                                    },
+                                    "sentiment": {
+                                        "type": "string",
+                                        "enum": ["positive", "negative", "mixed"]
+                                    }
+                                },
+                                "required": ["phrase", "sentiment"],
+                                "additionalProperties": False
+                            }
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "sentiment",
+                        "confidence_score",
+                        "key_phrases",
+                        "summary"
+                    ],
+                    "additionalProperties": False
+                }
+            }
+        }
     )
     return response.choices[0].message.content
 
