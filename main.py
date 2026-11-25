@@ -5,11 +5,26 @@ import json
 from dotenv import load_dotenv
 import argparse
 from pathlib import Path
+from typing import Literal
+from pydantic import BaseModel, Field, ValidationError
+
 
 # Constants
 MODEL_NAME = "openai/gpt-oss-20b"
 SYSTEM_PROMPT = "analyze the sentiment of the user’s text"
 BASE_URL = "https://api.groq.com/openai/v1"
+
+
+class KeyPhrase(BaseModel):
+    phrase: str
+    sentiment: Literal["positive", "negative", "mixed"]
+
+
+class SentimentResult(BaseModel):
+    sentiment: Literal["positive", "negative", "mixed"]
+    confidence_score: float = Field(ge=0, le=1)
+    key_phrases: list[KeyPhrase]
+    summary: str
 
 
 def main():
@@ -57,9 +72,15 @@ def main():
         api_key=api_key
     )
 
-    result = json.loads(analyze(client, content))
-
-    print(json.dumps(result, indent=2))
+    try:
+        result = SentimentResult.model_validate_json(analyze(client, content))
+        print(result.model_dump_json(indent=2))
+    except ValidationError as e:
+        lines = []
+        for err in e.errors():
+            field = ".".join(str(part) for part in err["loc"])
+            lines.append(f"{field}: {err['msg']}")
+        sys.exit("Error: invalid model output\n" + "\n".join(lines))
 
 
 def analyze(client, content):
