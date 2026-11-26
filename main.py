@@ -18,11 +18,11 @@ BASE_DELAY=1
 
 class KeyPhrase(BaseModel):
     phrase: str
-    sentiment: Literal["positive", "negative", "mixed"]
+    sentiment: Literal["positive", "negative", "mixed", "neutral"]
 
 
 class SentimentResult(BaseModel):
-    sentiment: Literal["positive", "negative", "mixed"]
+    sentiment: Literal["positive", "negative", "mixed", "neutral"]
     confidence_score: float = Field(ge=0, le=1)
     key_phrases: list[KeyPhrase]
     summary: str
@@ -95,7 +95,7 @@ def analyze(client, content, feedback= ""):
                     "properties": {
                         "sentiment": {
                             "type": "string",
-                            "enum": ["positive", "negative", "mixed"]
+                            "enum": ["positive", "negative", "mixed", "neutral"]
                         },
                         "confidence_score": {
                             "type": "number",
@@ -112,7 +112,7 @@ def analyze(client, content, feedback= ""):
                                     },
                                     "sentiment": {
                                         "type": "string",
-                                        "enum": ["positive", "negative", "mixed"]
+                                        "enum": ["positive", "negative", "mixed", "neutral"]
                                     }
                                 },
                                 "required": ["phrase", "sentiment"],
